@@ -6,3 +6,35 @@
   color-scheme: light;
 }
 
+html {
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+body {
+  overflow-x: hidden;
+  max-width: 100vw;
+  background-color: #F5F2EA;
+  color: #272838;
+  font-family: 'Manrope', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+}
+
+/* Accessible focus outlines conforming to WCAG 2.2 AA */
+:focus-visible {
+  outline: 2px solid #3E4E50;
+  outline-offset: 2px;
+}
+
+/* Editorial typography utilities */
+.font-editorial-title {
+  font-family: 'Newsreader', Georgia, serif;
+  font-weight: 600;
+  letter-spacing: -0.02em;
+}
+
+.font-editorial-body {
+  font-family: 'Newsreader', Georgia, serif;
+  font-weight: 400;
+  line-height: 1.625;
+}
+

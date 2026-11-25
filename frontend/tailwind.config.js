@@ -16,8 +16,16 @@ export default {
         'soft-sand': '#E7DCCB',
       },
       fontFamily: {
-        serif: ['Newsreader', 'Georgia', 'serif'],
-        sans: ['Manrope', 'system-ui', 'sans-serif'],
+        serif: ['Newsreader', 'Georgia', 'Cambria', 'serif'],
+        sans: ['Manrope', '-apple-system', 'BlinkMacSystemFont', 'Segoe UI', 'Roboto', 'sans-serif'],
+      },
+      boxShadow: {
+        'subtle': '0 1px 2px 0 rgba(39, 40, 56, 0.04)',
+        'card': '0 1px 3px 0 rgba(39, 40, 56, 0.05), 0 1px 2px -1px rgba(39, 40, 56, 0.03)',
+        'elevated': '0 4px 14px -2px rgba(39, 40, 56, 0.08), 0 2px 6px -2px rgba(39, 40, 56, 0.04)',
+      },
+      borderRadius: {
+        'academic': '6px',
       },
     },
   },
