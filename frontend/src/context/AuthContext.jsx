@@ -2,30 +2,50 @@ import React, { createContext, useContext, useState, useEffect, useCallback } fr
 import { api } from '../services/api';
 
 const AuthContext = createContext(null);
+const USER_STORAGE_KEY = 'campusconnect_user';
 
 export function AuthProvider({ children }) {
-  const [currentUser, setCurrentUser] = useState(null);
+  const [currentUser, setCurrentUser] = useState(() => {
+    try {
+      const saved = sessionStorage.getItem(USER_STORAGE_KEY);
+      return saved ? JSON.parse(saved) : null;
+    } catch {
+      return null;
+    }
+  });
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
   const checkAuth = useCallback(async () => {
     try {
-      setLoading(true);
       const res = await api.get('/auth/me');
       if (res && res.success && res.data) {
         // Handle user object
         const user = res.data.user || res.data;
         setCurrentUser(user);
+        try {
+          sessionStorage.setItem(USER_STORAGE_KEY, JSON.stringify(user));
+        } catch {}
         setError(null);
+        return user;
       } else {
         setCurrentUser(null);
+        try {
+          sessionStorage.removeItem(USER_STORAGE_KEY);
+        } catch {}
+        return null;
       }
     } catch (err) {
-      // 401 simply means not logged in
-      setCurrentUser(null);
-      if (err.status !== 401) {
+      if (err.status === 401) {
+        // Expired or invalid session
+        setCurrentUser(null);
+        try {
+          sessionStorage.removeItem(USER_STORAGE_KEY);
+        } catch {}
+      } else {
         setError(err.message || 'Failed to authenticate');
       }
+      return null;
     } finally {
       setLoading(false);
     }
@@ -39,10 +59,13 @@ export function AuthProvider({ children }) {
     setError(null);
     const res = await api.post('/auth/login', { identifier, password });
     if (res && res.success) {
-      if (res.data?.user || res.data) {
-        setCurrentUser(res.data.user || res.data);
+      const user = res.data?.user || res.data;
+      if (user) {
+        setCurrentUser(user);
+        try {
+          sessionStorage.setItem(USER_STORAGE_KEY, JSON.stringify(user));
+        } catch {}
       }
-      await checkAuth();
       return res;
     }
     throw new Error(res?.message || 'Login failed');
@@ -52,10 +75,13 @@ export function AuthProvider({ children }) {
     setError(null);
     const res = await api.post('/auth/register', userData);
     if (res && res.success) {
-      if (res.data?.user || res.data) {
-        setCurrentUser(res.data.user || res.data);
+      const user = res.data?.user || res.data;
+      if (user) {
+        setCurrentUser(user);
+        try {
+          sessionStorage.setItem(USER_STORAGE_KEY, JSON.stringify(user));
+        } catch {}
       }
-      await checkAuth();
       return res;
     }
     throw new Error(res?.message || 'Registration failed');
@@ -67,6 +93,9 @@ export function AuthProvider({ children }) {
     } catch {
       // Ignore network errors on logout
     } finally {
+      try {
+        sessionStorage.removeItem(USER_STORAGE_KEY);
+      } catch {}
       setCurrentUser(null);
     }
   };
