@@ -68,12 +68,15 @@ def set_session_cookie(response, raw_token: str, max_age: int = 86400 * 7):
     import os
     is_prod = os.getenv("FLASK_ENV") == "production" or os.getenv("ENV") == "production"
     secure = is_prod or (request.is_secure if request else False)
+    # When deployed in production across subdomains/services (e.g. onrender.com),
+    # SameSite must be "None" with secure=True so the browser includes credentials.
+    samesite = "None" if is_prod else "Lax"
     response.set_cookie(
         SESSION_COOKIE_NAME,
         raw_token,
         max_age=max_age,
         httponly=True,
-        samesite="Lax",
+        samesite=samesite,
         secure=secure,
         path="/"
     )
@@ -85,13 +88,14 @@ def clear_session_cookie(response):
     import os
     is_prod = os.getenv("FLASK_ENV") == "production" or os.getenv("ENV") == "production"
     secure = is_prod or (request.is_secure if request else False)
+    samesite = "None" if is_prod else "Lax"
     response.set_cookie(
         SESSION_COOKIE_NAME,
         "",
         expires=0,
         max_age=0,
         httponly=True,
-        samesite="Lax",
+        samesite=samesite,
         secure=secure,
         path="/"
     )

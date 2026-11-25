@@ -16,9 +16,38 @@ def create_app(config_class=Config):
     if not app.config.get("TESTING", False):
         validate_production_secret(str(app.config.get("SECRET_KEY") or ""), env)
 
+    # Configure CORS origins: strict allowlist of explicit production origins and local dev
+    cors_origins = set()
+
+    # Preserve local development origins
+    dev_origins = {
+        "http://localhost:5173",
+        "http://localhost:5173/",
+        "http://127.0.0.1:5173",
+        "http://127.0.0.1:5173/",
+        "http://localhost:3000",
+        "http://localhost:3000/",
+    }
+    cors_origins.update(dev_origins)
+
+    # Explicit production frontend origin(s) from configuration / environment
+    raw_origin = getattr(config_class, "FRONTEND_ORIGIN", None) or os.getenv("FRONTEND_ORIGIN", "")
+    if isinstance(raw_origin, list):
+        origin_items = raw_origin
+    elif isinstance(raw_origin, str) and raw_origin.strip():
+        origin_items = [o.strip() for o in raw_origin.split(",") if o.strip()]
+    else:
+        origin_items = []
+
+    for item in origin_items:
+        clean = item.rstrip("/")
+        if clean:
+            cors_origins.add(clean)
+            cors_origins.add(f"{clean}/")
+
     CORS(
         app,
-        origins=[config_class.FRONTEND_ORIGIN],
+        origins=sorted(list(cors_origins)),
         supports_credentials=True,
         allow_headers=["Content-Type", "Accept", "X-Requested-With", "Authorization"],
         methods=["GET", "POST", "PUT", "DELETE", "OPTIONS"],
