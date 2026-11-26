@@ -16,6 +16,5 @@ services:
         generateValue: true
       - key: DATABASE_PATH
         value: /tmp/campusconnect.db
-      # Update CORS_ORIGINS in the Render Dashboard to your exact Vercel production URL once created
       - key: CORS_ORIGINS
-        value: https://campusconnect-frontend-bzwf.onrender.com
+        value: https://campconct.vercel.app,https://campusconnect-frontend-bzwf.onrender.com
