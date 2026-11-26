@@ -2,14 +2,11 @@ services:
   - type: web
     name: campusconnect-backend
     runtime: python
+    plan: free
     rootDir: backend
     buildCommand: pip install -r requirements.txt
     startCommand: gunicorn -w 1 --threads 4 --bind 0.0.0.0:$PORT "app:create_app()"
     healthCheckPath: /api/v1/health
-    disk:
-      name: campusconnect-data
-      mountPath: /var/data
-      sizeGB: 1
     envVars:
       - key: FLASK_ENV
         value: production
@@ -18,20 +15,7 @@ services:
       - key: SECRET_KEY
         generateValue: true
       - key: DATABASE_PATH
-        value: /var/data/campusconnect.db
+        value: /tmp/campusconnect.db
+      # Update CORS_ORIGINS in the Render Dashboard to your exact Vercel production URL once created
       - key: CORS_ORIGINS
         value: https://campusconnect-frontend-bzwf.onrender.com
-
-  - type: web
-    name: campusconnect-frontend
-    runtime: static
-    rootDir: frontend
-    buildCommand: npm ci && npm run build
-    staticPublishPath: dist
-    routes:
-      - type: rewrite
-        source: /*
-        destination: /index.html
-    envVars:
-      - key: VITE_API_BASE_URL
-        value: https://campusconnect-backend-9o12.onrender.com/api/v1
