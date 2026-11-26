@@ -1,8 +1,8 @@
 import datetime
-import json
 import sqlite3
 import uuid
 from typing import Any, Dict, Optional, Tuple
+
 from app.db.connection import get_db
 from app.dsa import get_dsa_manager
 from app.repositories.session_repository import SessionRepository
@@ -12,7 +12,6 @@ from app.utils.helpers import (
     hash_password,
     hash_session_token,
     normalize_key,
-    utc_now_iso,
     verify_password,
 )
 
@@ -36,14 +35,25 @@ class AuthService:
         Validate inputs, hash password, create persistent user record,
         and atomically synchronize in-memory vertex and Trie search keys.
         """
-        if not username or not username.strip():
+        if not isinstance(username, str) or not username.strip():
             raise ValueError("Username is required.")
-        if not email or not email.strip():
+        if not isinstance(email, str) or not email.strip():
             raise ValueError("Email is required.")
-        if not password or len(password) < 6:
+        if not isinstance(password, str) or len(password) < 6:
             raise ValueError("Password must be at least 6 characters.")
-        if not full_name or not full_name.strip():
+        if not isinstance(full_name, str) or not full_name.strip():
             raise ValueError("Full name is required.")
+
+        clean_programme = programme.strip() if isinstance(programme, str) and programme.strip() else "General"
+        if isinstance(academic_year, bool):
+            raise ValueError("Academic year must be an integer between 1 and 10.")
+        try:
+            clean_year = int(academic_year) if academic_year is not None else 1
+            if clean_year < 1 or clean_year > 10:
+                raise ValueError()
+        except (TypeError, ValueError):
+            raise ValueError("Academic year must be an integer between 1 and 10.")
+        clean_bio = bio.strip() if isinstance(bio, str) and bio.strip() else None
 
         conn = conn or get_db()
         norm_username = normalize_key(username)
@@ -69,11 +79,11 @@ class AuthService:
                 email=email.strip(),
                 password_hash=pwd_hash,
                 full_name=full_name.strip(),
-                programme=programme.strip(),
-                academic_year=int(academic_year),
+                programme=clean_programme,
+                academic_year=clean_year,
                 skills=skills,
                 user_id=user_id,
-                bio=bio.strip() if bio else None,
+                bio=clean_bio,
             )
             sync.record_user_registered(user_id, username.strip(), full_name.strip())
 
@@ -82,6 +92,8 @@ class AuthService:
             "username": user_record["username"],
             "full_name": user_record["full_name"],
             "email": user_record["email"],
+            "programme": user_record["programme"],
+            "academic_year": user_record["academic_year"],
         }
 
     @staticmethod
@@ -124,6 +136,7 @@ class AuthService:
             "user_id": user["user_id"],
             "username": user["username"],
             "full_name": user["full_name"],
+            "email": user["email"],
             "programme": user["programme"],
             "academic_year": user["academic_year"],
         }

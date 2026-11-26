@@ -1,5 +1,5 @@
 from flask import Blueprint, jsonify, request, g
-from app.services.connection_service import ConnectionService
+from app.services.connection_service import ConnectionService, DOMAIN_CONFLICT_ERRORS
 from app.utils.auth import login_required
 
 connections_bp = Blueprint("connections", __name__)
@@ -50,7 +50,7 @@ def send_request():
             "message": msg,
             "error": {"code": "CONFLICT" if is_conflict else "VALIDATION_ERROR", "details": {}}
         }), 409 if is_conflict else 400
-    except Exception as e:
+    except DOMAIN_CONFLICT_ERRORS as e:
         return jsonify({
             "success": False,
             "message": str(e),
@@ -124,7 +124,7 @@ def accept_request(request_id):
             "message": msg,
             "error": {"code": "CONFLICT" if is_conflict else "BAD_REQUEST", "details": {}}
         }), 409 if is_conflict else 400
-    except Exception as e:
+    except DOMAIN_CONFLICT_ERRORS as e:
         return jsonify({
             "success": False,
             "message": str(e),
@@ -164,7 +164,7 @@ def reject_request(request_id):
             "message": msg,
             "error": {"code": "CONFLICT" if is_conflict else "BAD_REQUEST", "details": {}}
         }), 409 if is_conflict else 400
-    except Exception as e:
+    except DOMAIN_CONFLICT_ERRORS as e:
         return jsonify({
             "success": False,
             "message": str(e),
@@ -204,7 +204,7 @@ def cancel_request(request_id):
             "message": msg,
             "error": {"code": "CONFLICT" if is_conflict else "BAD_REQUEST", "details": {}}
         }), 409 if is_conflict else 400
-    except Exception as e:
+    except DOMAIN_CONFLICT_ERRORS as e:
         return jsonify({
             "success": False,
             "message": str(e),

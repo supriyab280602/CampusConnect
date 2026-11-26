@@ -151,10 +151,7 @@ class NetworkService:
         limit = max(1, min(limit, 50))
         dsa_manager = get_dsa_manager()
 
-        try:
-            immediate_neighbors = set(dsa_manager.get_neighbors(user_id))
-        except Exception:
-            return []
+        immediate_neighbors = set(dsa_manager.get_neighbors(user_id))
 
         # Find 2-hop candidates
         candidates: dict[str, int] = {}

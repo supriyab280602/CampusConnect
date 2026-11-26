@@ -1,13 +1,16 @@
-from flask import Blueprint, jsonify, request, g
+from flask import Blueprint, g, jsonify, request
+
 from app.services.auth_service import AuthService
-from app.utils.auth import login_required, set_session_cookie, clear_session_cookie
+from app.utils.auth import clear_session_cookie, login_required, set_session_cookie
+from app.utils.rate_limit import rate_limit_auth
 
 auth_bp = Blueprint("auth", __name__)
 
 
 @auth_bp.route("/register", methods=["POST"])
+@rate_limit_auth()
 def register():
-    data = request.get_json() or {}
+    data = request.get_json(silent=True) or {}
     try:
         user = AuthService.register_user(
             username=data.get("username", ""),
@@ -27,6 +30,8 @@ def register():
             "username": user["username"],
             "full_name": user["full_name"],
             "email": user["email"],
+            "programme": user.get("programme", "General"),
+            "academic_year": user.get("academic_year", 1),
         }
         resp = jsonify({
             "success": True,
@@ -51,8 +56,9 @@ def register():
 
 
 @auth_bp.route("/login", methods=["POST"])
+@rate_limit_auth()
 def login():
-    data = request.get_json() or {}
+    data = request.get_json(silent=True) or {}
     identifier = data.get("username") or data.get("email") or data.get("identifier") or ""
     password = data.get("password", "")
     try:
@@ -65,6 +71,9 @@ def login():
             "user_id": user["user_id"],
             "username": user["username"],
             "full_name": user["full_name"],
+            "email": user.get("email", ""),
+            "programme": user.get("programme", "General"),
+            "academic_year": user.get("academic_year", 1),
         }
         resp = jsonify({
             "success": True,
@@ -88,12 +97,28 @@ def login():
 
 @auth_bp.route("/logout", methods=["POST"])
 def logout():
-    token = request.cookies.get("session_token")
-    if not token:
+    cookie_token = request.cookies.get("session_token")
+    using_bearer = False
+    token = cookie_token
+    if not token or token in ("undefined", "null", ""):
         auth_header = request.headers.get("Authorization", "")
         if auth_header.startswith("Bearer "):
             token = auth_header[7:].strip()
-    if token:
+            using_bearer = True
+
+    if cookie_token and cookie_token not in ("undefined", "null", "") and not using_bearer:
+        xrw = request.headers.get("X-Requested-With", "")
+        if xrw.lower() != "xmlhttprequest":
+            return jsonify({
+                "success": False,
+                "message": "CSRF validation failed.",
+                "error": {
+                    "code": "FORBIDDEN",
+                    "details": {}
+                }
+            }), 403
+
+    if token and token not in ("undefined", "null", ""):
         try:
             AuthService.logout(token)
         except Exception:

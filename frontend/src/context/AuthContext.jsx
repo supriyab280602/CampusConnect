@@ -5,14 +5,9 @@ const AuthContext = createContext(null);
 const USER_STORAGE_KEY = 'campusconnect_user';
 
 export function AuthProvider({ children }) {
-  const [currentUser, setCurrentUser] = useState(() => {
-    try {
-      const saved = sessionStorage.getItem(USER_STORAGE_KEY);
-      return saved ? JSON.parse(saved) : null;
-    } catch {
-      return null;
-    }
-  });
+  // Never treat locally cached user as proof of authentication.
+  // Initial state is unauthenticated; server verification occurs on mount.
+  const [currentUser, setCurrentUser] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
@@ -20,7 +15,6 @@ export function AuthProvider({ children }) {
     try {
       const res = await api.get('/auth/me');
       if (res && res.success && res.data) {
-        // Handle user object
         const user = res.data.user || res.data;
         setCurrentUser(user);
         try {
@@ -32,17 +26,17 @@ export function AuthProvider({ children }) {
         setCurrentUser(null);
         try {
           sessionStorage.removeItem(USER_STORAGE_KEY);
+          sessionStorage.removeItem('campusconnect_token');
         } catch {}
         return null;
       }
     } catch (err) {
-      if (err.status === 401) {
-        // Expired or invalid session
-        setCurrentUser(null);
-        try {
-          sessionStorage.removeItem(USER_STORAGE_KEY);
-        } catch {}
-      } else {
+      setCurrentUser(null);
+      try {
+        sessionStorage.removeItem(USER_STORAGE_KEY);
+        sessionStorage.removeItem('campusconnect_token');
+      } catch {}
+      if (err.status !== 401) {
         setError(err.message || 'Failed to authenticate');
       }
       return null;
@@ -54,6 +48,19 @@ export function AuthProvider({ children }) {
   useEffect(() => {
     checkAuth();
   }, [checkAuth]);
+
+  // Listen for unauthorized events dispatched on any 401 from protected APIs
+  useEffect(() => {
+    const handleUnauthorized = () => {
+      setCurrentUser(null);
+      try {
+        sessionStorage.removeItem(USER_STORAGE_KEY);
+        sessionStorage.removeItem('campusconnect_token');
+      } catch {}
+    };
+    window.addEventListener('campusconnect:unauthorized', handleUnauthorized);
+    return () => window.removeEventListener('campusconnect:unauthorized', handleUnauthorized);
+  }, []);
 
   const login = async (identifier, password) => {
     setError(null);
@@ -95,6 +102,7 @@ export function AuthProvider({ children }) {
     } finally {
       try {
         sessionStorage.removeItem(USER_STORAGE_KEY);
+        sessionStorage.removeItem('campusconnect_token');
       } catch {}
       setCurrentUser(null);
     }

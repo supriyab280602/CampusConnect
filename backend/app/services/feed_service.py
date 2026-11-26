@@ -50,10 +50,7 @@ class FeedService:
         dsa_manager = get_dsa_manager()
 
         # Step 1: Identify accepted connections from in-memory graph
-        try:
-            connected_ids = dsa_manager.get_neighbors(user_id)
-        except Exception:
-            connected_ids = []
+        connected_ids = dsa_manager.get_neighbors(user_id)
 
         # Authors = user + accepted connections
         author_ids = list(set([user_id] + list(connected_ids)))

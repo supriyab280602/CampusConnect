@@ -13,6 +13,14 @@ from app.repositories.connection_request_repository import (
 )
 from app.repositories.user_repository import UserRepository
 
+DOMAIN_CONFLICT_ERRORS = (
+    AlreadyConnectedError,
+    DuplicatePendingRequestError,
+    ReverseRequestConflictError,
+    InvalidRequestStatusError,
+    SelfRequestError,
+)
+
 
 class ConnectionService:
     """Service governing connection requests and accepted graph relationships."""
@@ -178,13 +186,12 @@ class ConnectionService:
         conn = conn or get_db()
         dsa_manager = get_dsa_manager()
 
-        if not ConnectionRepository.are_connected(conn, user_a, user_b):
-            raise LookupError("Users are not connected.")
-
         with dsa_manager.synchronized_mutation(conn) as sync:
+            if not ConnectionRepository.are_connected(conn, user_a, user_b):
+                raise LookupError("Users are not connected.")
             removed = ConnectionRepository.remove_connection(conn, user_a, user_b)
             if not removed:
-                return False
+                raise LookupError("Users are not connected.")
             sync.record_connection_removed(user_a, user_b)
 
         return True

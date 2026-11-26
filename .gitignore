@@ -31,3 +31,10 @@ dist/
 Thumbs.db
 Desktop.ini
 
+# Test & QA Artifacts
+qa_artifacts/
+scripts/screenshots/
+e2e-results.xml
+playwright-report/
+test-results/
+
