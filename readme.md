@@ -346,6 +346,68 @@ These are not part of the mandatory initial implementation baseline.
 
 License selection and repository publication terms are to be decided before public distribution.
 
+---
+
+## Production Deployment (Vercel Frontend + Render Free Backend)
+
+CampusConnect uses a split hosting architecture:
+
+- **Frontend:** Vercel (React + Vite static build)
+- **Backend:** Render Free Web Service (Python + Flask + Gunicorn)
+- **Database:** SQLite (`/tmp/campusconnect.db` on Render Free)
+- **CI:** GitHub Actions (`.github/workflows/ci.yml`)
+
+### 1. Vercel Frontend Setup
+
+Configure a Vercel project connected to `https://github.com/supriyab280602/CampusConnect` (`main` branch):
+
+- **Root Directory:** `frontend`
+- **Framework Preset:** `Vite`
+- **Install Command:** `npm ci`
+- **Build Command:** `npm run build`
+- **Output Directory:** `dist`
+- **SPA Routing:** Configured in `frontend/vercel.json` (`/(.*) -> /index.html`, preserving `?tab=` query parameters).
+- **Environment Variable (Production & Preview):**
+  - `VITE_API_BASE_URL=https://campusconnect-backend-9o12.onrender.com/api/v1`
+
+### 2. Render Backend Setup (Free Tier)
+
+Configured in `render.yaml` (`campusconnect-backend`):
+
+- **Root Directory:** `backend`
+- **Runtime:** `python`
+- **Plan:** `free` (no paid Persistent Disk)
+- **Build Command:** `pip install -r requirements.txt`
+- **Start Command:** `gunicorn -w 1 --threads 4 --bind 0.0.0.0:$PORT "app:create_app()"`
+  - Must run with **1 worker (`-w 1`)** because `DSAManager` (`UndirectedGraph` and `PrefixTrie`) is process-local in memory.
+- **Health Check Path:** `/api/v1/health`
+- **Required Environment Variables:**
+  - `FLASK_ENV=production`
+  - `FLASK_DEBUG=0`
+  - `SECRET_KEY` — cryptographically random string (at least 32 characters)
+  - `DATABASE_PATH=/tmp/campusconnect.db`
+  - `CORS_ORIGINS` — exact Vercel production origin (`https://campconct.vercel.app`, no `*` wildcard)
+
+### 3. SQLite & Ephemeral Storage Limitation on Render Free
+
+On Render's Free tier, persistent disks are not available. `DATABASE_PATH=/tmp/campusconnect.db` uses the container's writable ephemeral filesystem (`backend/app/db/connection.py` safely ensures parent directories exist and initializes the schema and in-memory DSA indices on startup).
+
+> **Important:** Data stored in SQLite on Render Free is **temporary** and will be reset whenever the service spins down due to inactivity, restarts, or redeploys. For persistent production data, upgrade the backend service to a paid Render plan with a Persistent Disk mounted at `/var/data` (`DATABASE_PATH=/var/data/campusconnect.db`).
+
+### 4. CORS & Authentication
+
+- `CORS_ORIGINS` is set in the Render Dashboard and `render.yaml` to `https://campconct.vercel.app,https://campusconnect-frontend-bzwf.onrender.com`.
+- Never use wildcard `*` with `supports_credentials=True`.
+- Cross-origin deployments preserve `SameSite=None; Secure; HttpOnly` cookies, `X-Session-Token` / `Authorization: Bearer` fallback, `X-Requested-With: XMLHttpRequest` CSRF protection, and auth rate limiting.
+
+### 5. Deployment Sequence & Live Verification
+
+1. Deploy the `frontend` project on Vercel at `https://campconct.vercel.app`.
+2. In the Render Dashboard for `campusconnect-backend`, set `CORS_ORIGINS=https://campconct.vercel.app` (or comma-separated with previous frontend) and `DATABASE_PATH=/tmp/campusconnect.db`, then deploy.
+3. Verify `GET https://campusconnect-backend-9o12.onrender.com/api/v1/health` returns `HTTP 200` (`status: "healthy"`).
+4. Verify `OPTIONS` preflight with `Origin: https://campconct.vercel.app` returns `Access-Control-Allow-Origin: https://campconct.vercel.app`.
+5. Open `https://campconct.vercel.app` in a browser and verify registration, login, reload persistence, profile update, post creation/deletion, Trie search, connection requests, graph recommendations/BFS, and logout with zero console/5xx errors.
+
 ## Documentation
 
 Refer to the project documentation for detailed specifications:
