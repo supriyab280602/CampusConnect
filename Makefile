@@ -18,4 +18,4 @@ build:
 	npm --prefix frontend run build
 
 qa:
-	"backend/venv/Scripts/python.exe" -u qa/test_complete_feature_suite.py
+	"backend/venv/Scripts/pytest.exe" e2e/test_e2e_journeys.py -v --tb=short

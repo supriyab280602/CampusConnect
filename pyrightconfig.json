@@ -3,7 +3,7 @@
   "venv": "venv",
   "include": [
     "backend",
-    "qa"
+    "e2e"
   ],
   "extraPaths": [
     "backend"
